@@ -18,7 +18,7 @@ export default async function InvitationsPage({ searchParams }: { searchParams: 
 
   let query = supabase
     .from("invitation_codes")
-    .select("id, code, type, status, usage_limit, usage_count, expires_at, plan_id, benefit_days, note, restricted_email, created_at", { count: "exact" })
+    .select("id, code, type, status, usage_limit, usage_count, expires_at, plan_id, benefit_days, note, restricted_email, created_at, limits", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(page * PAGE, page * PAGE + PAGE - 1);
   if (sp.status && ["active", "disabled", "revoked"].includes(sp.status)) query = query.eq("status", sp.status);
@@ -78,7 +78,11 @@ export default async function InvitationsPage({ searchParams }: { searchParams: 
                 </td>
                 <td className="px-4 py-3">
                   {t.admin.types[c.type as keyof typeof t.admin.types]}
-                  {c.plan_id !== "free" && <span className="text-xs text-subtle"> · {c.plan_id}{c.benefit_days ? ` ${c.benefit_days}d` : ""}</span>}
+                  {c.limits && (
+                    <p className="mt-1 text-xs text-lime">
+                      {t.admin.customLimits}: {Object.entries(c.limits as Record<string, number>).map(([k, v]) => `${t.admin.metrics[k as keyof typeof t.admin.metrics] ?? k} ${v}`).join(" · ")}
+                    </p>
+                  )}
                 </td>
                 <td className="px-4 py-3"><Badge tone={tone[c.status as keyof typeof tone]}>{t.admin.statuses[c.status as keyof typeof t.admin.statuses]}</Badge></td>
                 <td className="px-4 py-3 tabular-nums">

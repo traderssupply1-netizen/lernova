@@ -70,6 +70,7 @@ beforeAll(async () => {
   await sql(readFileSync(join(root, "supabase/migrations/20261118000005_revoke_anon_rpc.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000006_fast_session_and_stats.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000007_no_subscriptions_study_tools.sql"), "utf8"));
+  await sql(readFileSync(join(root, "supabase/migrations/20261118000008_custom_allowances.sql"), "utf8"));
 });
 
 beforeEach(async () => {
@@ -163,6 +164,31 @@ describe("invitation-only registration", () => {
     const [{ my_allowance }] = await asUser(userId, (c) => c.query("select my_allowance()")).then((r) => r.rows);
     expect(Number(my_allowance.recording_minutes.limit)).toBe(300);
     expect(Number(my_allowance.ai_requests.left)).toBe(50);
+  });
+
+  it("gives a code's custom allowance to the new user, and lets it be overridden", async () => {
+    await createCode({ code: "LRN-BIGGER" });
+    await sql(`update invitation_codes set limits = '{"ai_requests": 200, "recording_minutes": 600}' where code = 'LRN-BIGGER'`);
+    const { userId } = await register("LRN-BIGGER", "big@example.com");
+    const [{ limits_override }] = await sql("select limits_override from profiles where id = $1", [userId]);
+    expect(limits_override).toEqual({ ai_requests: 200, recording_minutes: 600 });
+    const [{ quota_remaining: ai }] = await sql("select quota_remaining($1, 'ai_requests')", [userId]);
+    expect(Number(ai)).toBe(200);
+    const [{ quota_remaining: exams }] = await sql("select quota_remaining($1, 'exams_generated')", [userId]);
+    expect(Number(exams)).toBe(10); // not customised: standard allowance
+    const [{ my_allowance }] = (await asUser(userId, (c) => c.query("select my_allowance()"))).rows;
+    expect(my_allowance.ai_requests.custom).toBe(true);
+    expect(my_allowance.exams_generated.custom).toBe(false);
+    // Junk keys or negative values are rejected.
+    expect(await errorOf(sql(`update profiles set limits_override = '{"ai_requests": -5}' where id = $1`, [userId]))).toBeTruthy();
+    expect(await errorOf(sql(`update profiles set limits_override = '{"hack": 1}' where id = $1`, [userId]))).toBeTruthy();
+    // Users cannot raise their own limits.
+    expect(await errorOf(asUser(userId, (c) => c.query(`update profiles set limits_override = '{"ai_requests": 99999}' where id = $1`, [userId])))).toBeTruthy();
+    // A normal code leaves the standard allowance.
+    await createCode({ code: "LRN-NORMAL" });
+    const { userId: normal } = await register("LRN-NORMAL", "normal@example.com");
+    const [{ quota_remaining: n }] = await sql("select quota_remaining($1, 'ai_requests')", [normal]);
+    expect(Number(n)).toBe(50);
   });
 
   it("schedules flashcards with SM-2 and only for their owner", async () => {

@@ -24,7 +24,7 @@ Stack: Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 
 | Transcription (gpt-4o-mini-transcribe, HU/EN/auto, uncertainty flags) | ✅ Done* | Resumable per segment, background job. Timestamps are estimated per sentence (exact with `OPENAI_TRANSCRIBE_MODEL=whisper-1`) |
 | AI notes (quick / detailed / exam, timestamp citations, AI explanation kept separate) | ✅ Done* | gpt-4.1-mini by default (Claude optional), structured output with zod validation |
 | Lesson page: transcript search/edit/copy, jump to timestamp, playback, note editing, MD/Word/PDF export, delete | ✅ Done | Word = HTML-based .doc |
-| One monthly allowance for everyone (admin-set), refund on failure, AI cost tracking | ✅ Done + tested | Default: 300 recording min, 50 AI requests, 10 exams, 10 documents |
+| Monthly allowance (admin-set standard + custom per invitation code or per user), refund on failure, AI cost tracking | ✅ Done + tested | Default: 300 recording min, 50 AI requests, 10 exams, 10 documents |
 | Audio retention (default 30 days) | ✅ Done | Daily job deletes old audio; transcript and notes stay |
 | GDPR: data export (JSON), account deletion with files | ✅ Done | |
 | Security headers (CSP, HSTS, Permissions-Policy) | ✅ Done | |
@@ -49,10 +49,10 @@ Stack: Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 
 npm run typecheck   # clean
 npm run lint        # clean
 npm run build       # clean
-npm test            # 35/35 passed
+npm test            # 36/36 passed
 ```
 
-- **Database (17 tests, real PostgreSQL 16 with a Supabase shim):** valid code → profile/role/plan; direct signUp without a code is **blocked**; invalid/disabled/revoked/expired codes; usage limit; **failed account creation does not consume the code**; reservation expiry; **15 parallel registrations on a 3-use code → exactly 3**; legacy paid-plan codes give the standard allowance; SM-2 scheduling and card ownership; private code bound to an email; anon/authenticated cannot call internal functions; **data isolation** (cannot read or write another user's lesson); users cannot make themselves admin, change their plan or edit protected profile fields; admin/super admin permissions + audit log; quota + refund; rate limit; the job queue gives each job to exactly one worker.
+- **Database (18 tests, real PostgreSQL 16 with a Supabase shim):** valid code → profile/role/plan; direct signUp without a code is **blocked**; invalid/disabled/revoked/expired codes; usage limit; **failed account creation does not consume the code**; reservation expiry; **15 parallel registrations on a 3-use code → exactly 3**; legacy paid-plan codes give the standard allowance; SM-2 scheduling and card ownership; private code bound to an email; anon/authenticated cannot call internal functions; **data isolation** (cannot read or write another user's lesson); users cannot make themselves admin, change their plan or edit protected profile fields; admin/super admin permissions + audit log; quota + refund; rate limit; the job queue gives each job to exactly one worker.
 - **Unit (18):** safe Markdown rendering (XSS-proof), timestamps, streak/time zones, exam answer checking, estimated transcript timestamps, document text extraction.
 - **Manual:** pages render in HU and EN; layout checked at iPhone (390 px) and desktop (1440 px) sizes.
 - **Not yet tested:** recording on a real iPhone, a real Whisper/Claude call, the email flow. These need a live project and keys.

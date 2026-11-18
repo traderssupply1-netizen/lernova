@@ -7,6 +7,8 @@ import type { Dictionary } from "@/lib/i18n/hu";
 import { fmt } from "@/lib/i18n/format";
 import { Alert, Button, Card, Input, Label, Select } from "@/components/ui";
 
+const LIMIT_METRICS = ["recording_minutes", "transcription_minutes", "ai_requests", "document_uploads", "exams_generated"] as const;
+
 export function GenerateForm({ t }: { t: Dictionary["admin"] }) {
   const [state, action, pending] = useActionState<GenerateState, FormData>(generateInvitationsAction, undefined);
   const [type, setType] = useState("general");
@@ -44,6 +46,18 @@ export function GenerateForm({ t }: { t: Dictionary["admin"] }) {
             <Input id="restrictedEmail" name="restrictedEmail" type="email" />
           </div>
         )}
+        <details className="rounded-xl border border-ink-700 p-3 sm:col-span-2 lg:col-span-4">
+          <summary className="cursor-pointer text-sm font-medium">{t.customLimits}</summary>
+          <p className="mt-2 text-xs text-subtle">{t.customLimitsHint}</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {LIMIT_METRICS.map((m) => (
+              <div key={m}>
+                <Label htmlFor={`limit_${m}`}>{t.metrics[m]}</Label>
+                <Input id={`limit_${m}`} name={`limit_${m}`} type="number" min={0} max={1000000} placeholder={t.standard} />
+              </div>
+            ))}
+          </div>
+        </details>
         <div className="sm:col-span-2">
           <Label htmlFor="note">{t.note}</Label>
           <Input id="note" name="note" maxLength={500} />

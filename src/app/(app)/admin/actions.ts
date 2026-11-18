@@ -7,6 +7,19 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export type GenerateState = { error?: string; codes?: string[] } | undefined;
 
+const LIMIT_METRICS = ["recording_minutes", "transcription_minutes", "ai_requests", "document_uploads", "exams_generated"] as const;
+
+/** Reads "limit_<metric>" fields; empty fields mean "standard allowance". Returns null when nothing is set. */
+function readLimits(formData: FormData): Record<string, number> | null {
+  const out: Record<string, number> = {};
+  for (const m of LIMIT_METRICS) {
+    const raw = String(formData.get(`limit_${m}`) ?? "").trim();
+    if (raw === "") continue;
+    out[m] = z.coerce.number().int().min(0).max(1_000_000).parse(raw);
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 const generateSchema = z.object({
   count: z.coerce.number().int().min(1).max(500),
   type: z.enum(["general", "private"]),
@@ -37,8 +50,19 @@ export async function generateInvitationsAction(_: GenerateState, formData: Form
     p_restricted_email: d.restrictedEmail || null,
   });
   if (error) return { error: error.message };
+  const rows = data as { id: string; code: string }[];
+  let limits: Record<string, number> | null = null;
+  try {
+    limits = readLimits(formData);
+  } catch {
+    return { error: "limits" };
+  }
+  if (limits) {
+    const { error: lErr } = await createAdminClient().from("invitation_codes").update({ limits }).in("id", rows.map((r) => r.id));
+    if (lErr) return { error: lErr.message };
+  }
   revalidatePath("/admin/invitations");
-  return { codes: (data as { code: string }[]).map((r) => r.code) };
+  return { codes: rows.map((r) => r.code) };
 }
 
 export async function updateInvitationAction(formData: FormData) {
@@ -72,6 +96,17 @@ export async function setAccountStatusAction(formData: FormData) {
     // End their sessions immediately.
     await createAdminClient().auth.admin.signOut(d.userId).catch(() => undefined);
   }
+  revalidatePath("/admin/users");
+}
+
+/** Sets (or clears) a user's personal monthly allowance. Empty fields fall back to the standard allowance. */
+export async function setUserLimitsAction(formData: FormData) {
+  const s = await requireAdmin();
+  const userId = z.uuid().parse(formData.get("userId"));
+  const limits = formData.get("reset") === "1" ? null : readLimits(formData);
+  const { error } = await createAdminClient().from("profiles").update({ limits_override: limits }).eq("id", userId);
+  if (error) throw new Error(error.message);
+  await audit(s.userId, "user_limits_updated", "user", userId, { limits });
   revalidatePath("/admin/users");
 }
 
