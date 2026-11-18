@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* LERNOVA design tokens: charcoal surfaces, white type, a single lime accent. */
+@theme {
+  --color-ink-950: #08090a;
+  --color-ink-900: #0e0f11;
+  --color-ink-850: #131417;
+  --color-ink-800: #18191d;
+  --color-ink-700: #222428;
+  --color-ink-600: #2e3036;
+  --color-ink-500: #45484f;
+  --color-fg: #f5f6f7;
+  --color-muted: #9a9ea6;
+  --color-subtle: #6b6f77;
+  --color-lime: #c6f432;
+  --color-lime-strong: #b3e01f;
+  --color-lime-ink: #10140a;
+  --color-danger: #ff5c5c;
+  --color-warn: #ffb547;
+  --color-ok: #4ade80;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 20px 40px -24px rgb(0 0 0 / 0.6);
+
+  --animate-pulse-rec: pulse-rec 1.6s ease-in-out infinite;
+  @keyframes pulse-rec {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.85); }
   }
 }
 
+:root {
+  color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--color-ink-950);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink-950);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-lime);
+  color: var(--color-lime-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Markdown-rendered study notes */
+.prose-notes h1 { font-size: 1.375rem; font-weight: 650; margin: 1.5rem 0 0.75rem; letter-spacing: -0.01em; }
+.prose-notes h2 { font-size: 1.125rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--color-fg); }
+.prose-notes h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.5rem; color: var(--color-fg); }
+.prose-notes p { margin: 0.5rem 0; color: #d6d8dc; line-height: 1.7; }
+.prose-notes ul, .prose-notes ol { margin: 0.5rem 0 0.5rem 1.25rem; color: #d6d8dc; line-height: 1.7; }
+.prose-notes ul { list-style: disc; }
+.prose-notes ol { list-style: decimal; }
+.prose-notes li { margin: 0.25rem 0; }
+.prose-notes strong { color: var(--color-fg); font-weight: 600; }
+.prose-notes mark { background: rgb(198 244 50 / 0.16); color: var(--color-lime); padding: 0 0.2em; border-radius: 4px; }
+.prose-notes code { font-family: var(--font-mono); font-size: 0.875em; background: var(--color-ink-700); padding: 0.1em 0.35em; border-radius: 5px; }
+.prose-notes blockquote { border-left: 3px solid var(--color-lime); padding-left: 0.875rem; color: var(--color-muted); margin: 0.75rem 0; }
+.prose-notes .ts { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-lime); background: rgb(198 244 50 / 0.08); border-radius: 5px; padding: 0.05em 0.35em; cursor: pointer; }
+.prose-notes .uncertain { text-decoration: underline wavy var(--color-warn); text-underline-offset: 3px; }
+
+@media print {
+  body { background: #fff; color: #000; }
+  .no-print { display: none !important; }
+  .prose-notes p, .prose-notes li, .prose-notes h1, .prose-notes h2, .prose-notes h3 { color: #000; }
 }
