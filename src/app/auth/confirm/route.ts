@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     ok = !error;
   }
-  const dest = ok ? (type === "recovery" ? "/reset-password" : next) : "/login?error=LINK_INVALID";
+  // A PKCE code opened in another browser (e.g. the Gmail app) cannot sign in there,
+  // but Supabase has already confirmed the email: ask the user to log in.
+  const dest = ok ? (type === "recovery" ? "/reset-password" : next) : code ? "/login?error=CONFIRMED_LOGIN" : "/login?error=LINK_INVALID";
   return NextResponse.redirect(new URL(dest, origin));
 }

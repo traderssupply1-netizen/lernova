@@ -135,6 +135,7 @@ export const hu = {
       TERMS_REQUIRED: "Az elfogadás kötelező.",
       SUSPENDED: "Ez a fiók fel van függesztve.",
       VALIDATION: "Ellenőrizd a megadott adatokat.",
+      CONFIRMED_LOGIN: "Ha most erősítetted meg az e-mail-címed, a fiókod aktív – lépj be.",
       LINK_INVALID: "A link érvénytelen vagy lejárt.",
       UNKNOWN: "Valami hiba történt. Próbáld újra.",
     },

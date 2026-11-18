@@ -16,7 +16,7 @@ export function LoginForm({ t, next, initialError }: { t: T; next?: string; init
     <Card className="p-6 sm:p-8">
       <h1 className="text-2xl font-semibold tracking-tight">{t.loginTitle}</h1>
       <p className="mt-1 text-sm text-muted">{t.loginSubtitle}</p>
-      {error && <Alert tone="error" className="mt-5">{msg(t, error)}</Alert>}
+      {error && <Alert tone={error === "CONFIRMED_LOGIN" ? "success" : "error"} className="mt-5">{msg(t, error)}</Alert>}
       <form key={state?.values?.email ?? ""} action={action} className="mt-6 space-y-4">
         <input type="hidden" name="next" value={next ?? ""} />
         <div>

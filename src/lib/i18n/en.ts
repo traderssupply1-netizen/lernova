@@ -137,6 +137,7 @@ export const en: Dictionary = {
       TERMS_REQUIRED: "This is required.",
       SUSPENDED: "This account is suspended.",
       VALIDATION: "Please check the details you entered.",
+      CONFIRMED_LOGIN: "If you just confirmed your email, your account is active – please log in.",
       LINK_INVALID: "This link is invalid or has expired.",
       UNKNOWN: "Something went wrong. Please try again.",
     },
