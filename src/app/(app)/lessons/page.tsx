@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Mic } from "lucide-react";
+import { BookOpen, FileUp, Mic } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
 import { formatDuration } from "@/lib/i18n/format";
@@ -18,7 +18,7 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   let q = supabase
     .from("lessons")
-    .select("id, title, lesson_date, created_at, subjects(id, name, color), recordings(status, duration_seconds)", { count: "exact" })
+    .select("id, title, lesson_date, created_at, document_id, subjects(id, name, color), recordings(status, duration_seconds)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(page * PAGE, page * PAGE + PAGE - 1);
   if (sp.subject) q = q.eq("subject_id", sp.subject);
@@ -27,7 +27,7 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title={t.lessons.title} actions={<Link href="/record" className={buttonClass("primary", "sm")}><Mic className="size-4" aria-hidden />{t.dashboard.qRecord}</Link>} />
+      <PageHeader title={t.lessons.title} actions={<div className="flex gap-2"><Link href="/upload" className={buttonClass("secondary", "sm")}><FileUp className="size-4" aria-hidden />{t.study.uploadShort}</Link><Link href="/record" className={buttonClass("primary", "sm")}><Mic className="size-4" aria-hidden />{t.dashboard.qRecord}</Link></div>} />
       {!!subjects?.length && (
         <div className="-mx-1 mb-4 flex gap-1.5 overflow-x-auto pb-1">
           <Link href="/lessons" className={buttonClass(sp.subject ? "ghost" : "secondary", "sm")}>∗</Link>
@@ -54,6 +54,7 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
                   </p>
                 </div>
                 {rec && <Badge tone={TONE[rec.status] ?? "neutral"}>{t.lessons.status[rec.status]}</Badge>}
+                {!rec && l.document_id && <Badge>{t.study.documentBadge}</Badge>}
               </Link>
             );
           })}

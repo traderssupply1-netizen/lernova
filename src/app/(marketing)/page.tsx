@@ -1,16 +1,14 @@
 import Link from "next/link";
-import { BookOpenCheck, Brain, Check, FileText, Layers, Mic, Sparkles } from "lucide-react";
+import { BookOpenCheck, Brain, FileText, Layers, Mic, Sparkles } from "lucide-react";
 import { getDictionary } from "@/lib/i18n";
-import { FEATURE_LABELS, formatPrice, getPlans } from "@/lib/plans";
 import { Badge, buttonClass, Card, cn } from "@/components/ui";
 
 // What is actually shipped; the landing page must not overclaim.
-const LIVE = { recorder: true, notes: true, tutor: false, exams: false, flashcards: false } as const;
+const LIVE = { recorder: true, notes: true, tutor: true, exams: true, flashcards: true } as const;
 
 export default async function LandingPage() {
-  const { locale, t } = await getDictionary();
+  const { t } = await getDictionary();
   const L = t.landing;
-  const plans = await getPlans();
   const features = [
     { key: "recorder", icon: Mic },
     { key: "notes", icon: FileText },
@@ -98,30 +96,6 @@ export default async function LandingPage() {
               </div>
               <h3 className="mt-5 text-lg font-semibold">{L.features[key].t}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{L.features[key].d}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-20 sm:px-6" aria-labelledby="pricing-title">
-        <h2 id="pricing-title" className="text-2xl font-semibold tracking-tight sm:text-3xl">{L.pricingTitle}</h2>
-        <p className="mt-2 text-muted">{L.pricingSubtitle}</p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {plans.map((p) => (
-            <Card key={p.id} className={cn("flex flex-col p-6", p.id === "plus" && "border-lime/40")}>
-              <h3 className="font-semibold">{p.name}</h3>
-              <p className="mt-3">
-                <span className="text-4xl font-semibold tabular-nums">{formatPrice(p.monthly_price_cents, p.currency, locale)}</span>
-                {p.monthly_price_cents > 0 && <span className="text-muted">{L.perMonth}</span>}
-              </p>
-              <ul className="mt-6 flex-1 space-y-2.5 text-sm text-muted">
-                <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-lime" aria-hidden />{p.limits.recording_minutes} {t.common.minutes} / {locale === "hu" ? "hó felvétel" : "mo recording"}</li>
-                {p.features.map((f) => (
-                  <li key={f} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-lime" aria-hidden />{FEATURE_LABELS[f]?.[locale] ?? f}</li>
-                ))}
-              </ul>
-              <Link href="/register" className={buttonClass(p.id === "plus" ? "primary" : "secondary", "md", "mt-6 w-full")}>{L.planCta}</Link>
             </Card>
           ))}
         </div>

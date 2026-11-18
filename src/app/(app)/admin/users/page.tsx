@@ -20,9 +20,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const { data: users } = await query;
   const ids = (users ?? []).map((u) => u.id);
   const db = createAdminClient();
-  const [{ data: roles }, { data: subs }, { data: usage }] = await Promise.all([
+  const [{ data: roles }, { data: usage }] = await Promise.all([
     db.from("user_roles").select("user_id, role").in("user_id", ids),
-    db.from("subscriptions").select("user_id, plan_id, status, current_period_end").in("user_id", ids).in("status", ["active", "trialing", "past_due"]),
     db.from("usage_records").select("user_id, metric, amount").in("user_id", ids).gte("created_at", monthStartIso()),
   ]);
   const df = new Intl.DateTimeFormat(locale === "hu" ? "hu-HU" : "en-GB", { dateStyle: "medium" });
@@ -37,7 +36,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       <Card className="divide-y divide-ink-800">
         {(users ?? []).map((u) => {
           const r = (roles ?? []).filter((x) => x.user_id === u.id).map((x) => x.role);
-          const plans = (subs ?? []).filter((x) => x.user_id === u.id).map((x) => x.plan_id).filter((p) => p !== "free");
           const minutes = (usage ?? []).filter((x) => x.user_id === u.id && x.metric === "recording_minutes").reduce((a, x) => a + Number(x.amount), 0);
           const ai = (usage ?? []).filter((x) => x.user_id === u.id && x.metric === "ai_requests").reduce((a, x) => a + Number(x.amount), 0);
           const isSelf = u.id === session.userId;
@@ -48,7 +46,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 <p className="truncate font-medium">{u.full_name || "—"} <span className="text-sm font-normal text-muted">{u.email}</span></p>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-subtle">
                   {r.filter((x) => x !== "student").map((x) => <Badge key={x} tone="lime">{x}</Badge>)}
-                  <Badge>{plans[0] ?? "free"}</Badge>
                   {u.status === "suspended" && <Badge tone="danger">suspended</Badge>}
                   <span>{df.format(new Date(u.created_at))} · {Math.round(minutes)} {t.common.minutes} · AI {ai}</span>
                 </div>

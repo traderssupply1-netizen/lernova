@@ -1,9 +1,10 @@
+import Link from "next/link";
+import { Shield } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
-import { integrationStatus } from "@/lib/env";
 import { fmt } from "@/lib/i18n/format";
 import { createClient } from "@/lib/supabase/server";
-import { Alert, Badge, buttonClass, Card, PageHeader } from "@/components/ui";
+import { buttonClass, Card, PageHeader } from "@/components/ui";
 import { logoutAction } from "@/app/(auth)/actions";
 import { ProfileForm, DeleteAccount } from "./settings-forms";
 
@@ -14,27 +15,20 @@ export default async function SettingsPage() {
   const s = await requireUser("/settings");
   const { locale, t } = await getDictionary();
   const supabase = await createClient();
-  const quotas = await Promise.all(METRICS.map((m) => supabase.rpc("my_quota", { p_metric: m }).then((r) => [m, Number(r.data ?? 0)] as const)));
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("plan_id, source, current_period_end")
-    .in("status", ["active", "trialing", "past_due"])
-    .neq("plan_id", "free")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const df = new Intl.DateTimeFormat(locale === "hu" ? "hu-HU" : "en-GB", { dateStyle: "long" });
+  const { data: allowance } = await supabase.rpc("my_allowance");
+  const al = (allowance ?? {}) as Record<string, { limit: number; used: number; left: number }>;
+  const resetDate = new Intl.DateTimeFormat(locale === "hu" ? "hu-HU" : "en-GB", { month: "long", day: "numeric" }).format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1));
   const labels: Record<string, { hu: string; en: string }> = {
     recording_minutes: { hu: "Felvétel (perc)", en: "Recording (min)" },
     transcription_minutes: { hu: "Átírás (perc)", en: "Transcription (min)" },
-    ai_requests: { hu: "AI-kérések", en: "AI requests" },
-    document_uploads: { hu: "Dokumentumok", en: "Documents" },
-    exams_generated: { hu: "Vizsgák", en: "Exams" },
+    ai_requests: { hu: "AI-kérések (jegyzet, kártya, tanár)", en: "AI requests (notes, cards, tutor)" },
+    document_uploads: { hu: "Feltöltött dokumentumok", en: "Uploaded documents" },
+    exams_generated: { hu: "Gyakorló vizsgák", en: "Practice exams" },
   };
 
   return (
     <>
-      <PageHeader title={t.settings.title} />
+      <PageHeader title={t.settings.title} actions={s.isAdmin ? <Link href="/admin" className={buttonClass("secondary", "sm")}><Shield className="size-4" aria-hidden /> {t.nav.admin}</Link> : undefined} />
       <div className="space-y-4">
         <Card className="p-5 sm:p-6">
           <h2 className="font-semibold">{t.settings.profile}</h2>
@@ -42,25 +36,25 @@ export default async function SettingsPage() {
         </Card>
 
         <Card className="p-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">{t.settings.subscription}</h2>
-            <Badge tone="lime">{s.plan}</Badge>
-          </div>
-          {sub && (
-            <p className="mt-2 text-sm text-muted">
-              {sub.source === "invitation" ? (locale === "hu" ? "Meghívóból" : "From invitation") : sub.source}
-              {sub.current_period_end && ` · ${df.format(new Date(sub.current_period_end))}`}
-            </p>
-          )}
+          <h2 className="font-semibold">{t.settings.allowance}</h2>
+          <p className="mt-1 text-sm text-muted">{fmt(t.settings.allowanceReset, { date: resetDate })}</p>
           <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-            {quotas.map(([m, left]) => (
-              <li key={m} className="flex justify-between rounded-lg bg-ink-850 px-3 py-2">
-                <span className="text-muted">{labels[m][locale]}</span>
-                <span className="tabular-nums">{left >= 1e8 ? "∞" : Math.floor(left)}</span>
-              </li>
-            ))}
+            {METRICS.filter((m) => al[m]).map((m) => {
+              const { limit, used } = al[m];
+              const pct = limit > 0 ? Math.min(100, (Number(used) / Number(limit)) * 100) : 100;
+              return (
+                <li key={m} className="rounded-lg bg-ink-850 px-3 py-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted">{labels[m][locale]}</span>
+                    <span className="tabular-nums">{Math.floor(Number(used))} / {Number(limit)}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-700">
+                    <div className={pct >= 90 ? "h-full bg-danger" : "h-full bg-lime"} style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
-          {!integrationStatus().stripe && <Alert tone="info" className="mt-4">{fmt(t.common.notConfigured, { name: "Stripe" })}</Alert>}
         </Card>
 
         <Card className="p-5 sm:p-6">

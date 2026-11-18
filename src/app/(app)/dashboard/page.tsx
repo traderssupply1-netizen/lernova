@@ -94,7 +94,6 @@ export default async function DashboardPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-muted">{D.usage}</h2>
-            <Badge tone="lime">{D.plan}: {s.plan}</Badge>
           </div>
           <p className="mt-4 text-3xl font-semibold tabular-nums">{Math.floor(Number(st.recording_left))} <span className="text-base font-normal text-muted">{t.common.minutes}</span></p>
           <p className="mt-1 text-xs text-subtle">{t.recorder.title}</p>

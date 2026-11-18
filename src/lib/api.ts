@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { z } from "zod";
 import { apiUser, type SessionContext } from "@/lib/auth";
-import { ConfigError, env } from "@/lib/env";
+import { ConfigError } from "@/lib/env";
 import { runJobs } from "@/lib/jobs/runner";
 
 export const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "cache-control": "no-store" } });
@@ -33,18 +33,12 @@ export async function body<S extends z.ZodType>(req: Request, schema: S): Promis
 }
 
 /**
- * Starts the worker right after the response is sent; the scheduled job is the safety net.
- * On Netlify (WORKER_MODE=netlify) the work runs in a 15-minute background function,
- * elsewhere (e.g. Vercel) inside after() with the route's maxDuration.
+ * Starts the worker right after the response is sent (inside after(), within the
+ * route's maxDuration). The daily scheduled job is the safety net.
  */
 export function kickWorker() {
   after(async () => {
     try {
-      if (process.env.WORKER_MODE === "netlify" && env.cronSecret) {
-        const base = process.env.URL ?? env.siteUrl;
-        await fetch(`${base}/.netlify/functions/jobs-worker`, { method: "POST", headers: { authorization: `Bearer ${env.cronSecret}` } });
-        return;
-      }
       await runJobs({ budgetMs: 240_000 });
     } catch (e) {
       console.error("background worker failed", e);

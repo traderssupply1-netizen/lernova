@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Home, Mic, Settings, Shield } from "lucide-react";
+import { BookOpen, Home, Layers, Mic, Settings, Shield } from "lucide-react";
 import { cn } from "@/components/ui";
 
-const icons = { home: Home, mic: Mic, book: BookOpen, settings: Settings, shield: Shield };
+const icons = { home: Home, mic: Mic, book: BookOpen, cards: Layers, settings: Settings, shield: Shield };
 export type NavItem = { href: string; label: string; icon: keyof typeof icons };
 
 export function AppNav({ items, variant }: { items: NavItem[]; variant: "side" | "bottom" }) {
@@ -41,7 +41,8 @@ export function AppNav({ items, variant }: { items: NavItem[]; variant: "side" |
       aria-label="App"
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink-800 bg-ink-950/90 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl md:hidden"
     >
-      {items.map(({ href, label, icon }) => {
+      {/* Admin is reached from Settings on phones, to keep five tabs. */}
+      {items.filter((i) => i.icon !== "shield").map(({ href, label, icon }) => {
         const Icon = icons[icon];
         const isRecord = icon === "mic";
         return (

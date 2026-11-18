@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { chargeAndEnqueue } from "@/lib/quota";
 import { rateLimit } from "@/lib/security";
 
+// The background worker runs in after() and needs time for transcription and notes.
+export const maxDuration = 300;
+
 /** Regenerates AI notes for a lesson (one AI request from the allowance). */
 export const POST = route<{ id: string }>(async ({ user, params }) => {
   if (!(await rateLimit(`notes:${user.userId}`, 10, 3600))) return fail("RATE_LIMITED", 429);

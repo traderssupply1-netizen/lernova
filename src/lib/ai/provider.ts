@@ -11,13 +11,13 @@ export type AiUsage = { provider: ProviderId; model: string; inputTokens: number
 // Approximate list prices per million tokens; configurable via env for cost tracking.
 const PRICE = {
   anthropic: { in: Number(process.env.ANTHROPIC_PRICE_IN ?? 3), out: Number(process.env.ANTHROPIC_PRICE_OUT ?? 15) },
-  openai: { in: Number(process.env.OPENAI_PRICE_IN ?? 2), out: Number(process.env.OPENAI_PRICE_OUT ?? 8) },
+  openai: { in: Number(process.env.OPENAI_PRICE_IN ?? 0.4), out: Number(process.env.OPENAI_PRICE_OUT ?? 1.6) },
 };
 const cost = (p: ProviderId, i: number, o: number) => (i * PRICE[p].in + o * PRICE[p].out) / 1_000_000;
 
 /** Active provider from admin settings, falling back to whichever key is configured. */
 export async function activeProvider(): Promise<ProviderId> {
-  let wanted: ProviderId = "anthropic";
+  let wanted: ProviderId = "openai";
   try {
     const { data } = await createAdminClient().from("app_settings").select("value").eq("key", "ai_provider").maybeSingle();
     if (data?.value === "openai" || data?.value === "anthropic") wanted = data.value;

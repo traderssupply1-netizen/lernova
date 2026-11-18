@@ -6,8 +6,9 @@ export const GET = route<{ id: string }>(async ({ params }) => {
   const supabase = await createClient();
   const { data: chunks } = await supabase
     .from("recording_upload_chunks")
-    .select("storage_path, start_offset_seconds, duration_seconds, chunk_index, recordings!inner(lesson_id)")
+    .select("storage_path, start_offset_seconds, duration_seconds, chunk_index, recordings!inner(lesson_id, audio_deleted_at)")
     .eq("recordings.lesson_id", params.id)
+    .is("recordings.audio_deleted_at", null)
     .order("chunk_index");
   if (!chunks?.length) return fail("NOT_FOUND", 404);
   const { data: signed, error } = await supabase.storage.from("recordings").createSignedUrls(chunks.map((c) => c.storage_path), 3600);

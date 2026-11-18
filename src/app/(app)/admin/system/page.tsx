@@ -3,23 +3,26 @@ import { getDictionary } from "@/lib/i18n";
 import { integrationStatus } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, buttonClass, Card, PageHeader } from "@/components/ui";
-import { setAiProviderAction, updatePlanLimitsAction } from "../actions";
+import { setAiProviderAction, updateAllowanceAction } from "../actions";
 
 export const metadata = { title: "System" };
 
-const METRICS = ["recording_minutes", "transcription_minutes", "ai_requests", "document_uploads", "exams_generated", "storage_mb"] as const;
+const METRICS = ["recording_minutes", "transcription_minutes", "ai_requests", "document_uploads", "exams_generated"] as const;
 
 export default async function SystemPage() {
   await requireAdmin();
   const { locale, t } = await getDictionary();
   const supabase = await createClient();
-  const [{ data: plans }, { data: setting }, { data: errors }] = await Promise.all([
-    supabase.from("subscription_plans").select("*").order("sort_order"),
-    supabase.from("app_settings").select("value").eq("key", "ai_provider").maybeSingle(),
+  const [{ data: plan }, { data: settings }, { data: errors }] = await Promise.all([
+    supabase.from("subscription_plans").select("limits").eq("id", "free").maybeSingle(),
+    supabase.from("app_settings").select("key, value").in("key", ["ai_provider", "audio_retention_days"]),
     supabase.from("processing_jobs").select("id, type, error, attempts, created_at").eq("status", "failed").order("created_at", { ascending: false }).limit(20),
   ]);
   const integrations = integrationStatus();
-  const provider = (setting?.value as string) ?? "anthropic";
+  const setting = (k: string) => settings?.find((r) => r.key === k)?.value;
+  const provider = (setting("ai_provider") as string) ?? "openai";
+  const retention = Number(setting("audio_retention_days") ?? 30);
+  const limits = (plan?.limits ?? {}) as Record<string, number>;
   const df = new Intl.DateTimeFormat(locale === "hu" ? "hu-HU" : "en-GB", { dateStyle: "short", timeStyle: "short" });
 
   return (
@@ -53,34 +56,27 @@ export default async function SystemPage() {
               </button>
             ))}
           </form>
-          <p className="mt-3 text-xs text-subtle">Speech-to-text: OpenAI Whisper · {integrations.whisper ? t.admin.configured : t.admin.missing}</p>
+          <p className="mt-3 text-xs text-subtle">{t.admin.modelsInfo} · {integrations.whisper ? t.admin.configured : t.admin.missing}</p>
         </Card>
       </div>
 
-      <h2 className="mb-3 mt-8 font-semibold">{t.admin.plans}</h2>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {(plans ?? []).map((p) => (
-          <Card key={p.id} className="p-5">
-            <form action={updatePlanLimitsAction} className="space-y-2 text-sm">
-              <input type="hidden" name="id" value={p.id} />
-              <p className="font-semibold">{p.name}</p>
-              {(["monthly_price_cents", "annual_price_cents"] as const).map((f) => (
-                <label key={f} className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-muted">{f}</span>
-                  <input name={f} type="number" min={0} defaultValue={p[f]} className="h-8 w-28 rounded-md border border-ink-600 bg-ink-850 px-2 text-right tabular-nums" />
-                </label>
-              ))}
-              {METRICS.map((m) => (
-                <label key={m} className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-muted">{m}</span>
-                  <input name={m} type="number" min={0} defaultValue={(p.limits as Record<string, number>)[m] ?? 0} className="h-8 w-28 rounded-md border border-ink-600 bg-ink-850 px-2 text-right tabular-nums" />
-                </label>
-              ))}
-              <button className={buttonClass("secondary", "sm", "mt-2 w-full")}>{t.common.save}</button>
-            </form>
-          </Card>
-        ))}
-      </div>
+      <h2 className="mb-1 mt-8 font-semibold">{t.admin.allowance}</h2>
+      <p className="mb-3 text-sm text-muted">{t.admin.allowanceHint}</p>
+      <Card className="p-5">
+        <form action={updateAllowanceAction} className="grid gap-3 text-sm sm:grid-cols-2">
+          {METRICS.map((m) => (
+            <label key={m} className="flex items-center justify-between gap-2">
+              <span className="text-muted">{t.admin.metrics[m]}</span>
+              <input name={m} type="number" min={0} defaultValue={limits[m] ?? 0} className="h-9 w-28 rounded-md border border-ink-600 bg-ink-850 px-2 text-right tabular-nums" />
+            </label>
+          ))}
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-muted">{t.admin.audioRetention}</span>
+            <input name="audio_retention_days" type="number" min={1} max={3650} defaultValue={retention} className="h-9 w-28 rounded-md border border-ink-600 bg-ink-850 px-2 text-right tabular-nums" />
+          </label>
+          <button className={buttonClass("primary", "sm", "sm:col-span-2")}>{t.common.save}</button>
+        </form>
+      </Card>
 
       <h2 className="mb-3 mt-8 font-semibold">{t.admin.recentErrors}</h2>
       <Card className="divide-y divide-ink-800 text-sm">

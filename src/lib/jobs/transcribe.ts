@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normaliseLanguage, transcribeSegment, type TranscriptSegment } from "@/lib/stt/whisper";
+import { normaliseLanguage, sttPricePerMinute, transcribeSegment, type TranscriptSegment } from "@/lib/stt/whisper";
+import { env } from "@/lib/env";
 import { enqueueJob, notify, type Job, type JobContext, type JobOutcome } from "./runner";
 
 type Chunk = {
@@ -7,6 +8,7 @@ type Chunk = {
   chunk_index: number;
   storage_path: string;
   start_offset_seconds: number;
+  duration_seconds: number;
   transcript: { text: string; language: string | null; segments: TranscriptSegment[] } | null;
 };
 
@@ -30,7 +32,7 @@ export async function handleTranscribe(job: Job, ctx: JobContext): Promise<JobOu
 
   const { data: chunks } = await db
     .from("recording_upload_chunks")
-    .select("id, chunk_index, storage_path, start_offset_seconds, transcript")
+    .select("id, chunk_index, storage_path, start_offset_seconds, duration_seconds, transcript")
     .eq("recording_id", rec.id)
     .order("chunk_index");
   if (!chunks?.length) throw new Error("NO_AUDIO_SEGMENTS");
@@ -42,7 +44,7 @@ export async function handleTranscribe(job: Job, ctx: JobContext): Promise<JobOu
     const { data: file, error: dlError } = await db.storage.from("recordings").download(chunk.storage_path);
     if (dlError || !file) throw new Error(`DOWNLOAD_FAILED:${chunk.chunk_index}`);
     const ext = chunk.storage_path.split(".").pop() ?? "webm";
-    const result = await transcribeSegment(await file.arrayBuffer(), `segment-${chunk.chunk_index}.${ext}`, rec.mime_type.split(";")[0], lang);
+    const result = await transcribeSegment(await file.arrayBuffer(), `segment-${chunk.chunk_index}.${ext}`, rec.mime_type.split(";")[0], lang, Number(chunk.duration_seconds));
     await db
       .from("recording_upload_chunks")
       .update({ transcript: { text: result.text, language: result.language, segments: result.segments }, transcribed_at: new Date().toISOString() })
@@ -63,9 +65,13 @@ export async function handleTranscribe(job: Job, ctx: JobContext): Promise<JobOu
   const detected = normaliseLanguage(all.find((c) => c.transcript?.language)?.transcript?.language ?? null);
 
   const { data: existing } = await db.from("transcripts").select("id").eq("recording_id", rec.id).maybeSingle();
-  const row = { user_id: rec.user_id, lesson_id: rec.lesson_id, recording_id: rec.id, language: detected ?? (lang === "auto" ? null : lang), text, segments, provider: "openai_whisper", edited: false };
+  const row = { user_id: rec.user_id, lesson_id: rec.lesson_id, recording_id: rec.id, language: detected ?? (lang === "auto" ? null : lang), text, segments, provider: `openai:${env.whisperModel}`, edited: false };
   if (existing) await db.from("transcripts").update(row).eq("id", existing.id);
   else await db.from("transcripts").insert(row);
+
+  // Record the real transcription cost against the minutes reserved for this job.
+  const minutes = all.reduce((a, c) => a + Number(c.duration_seconds), 0) / 60;
+  await db.from("usage_records").update({ cost_usd: Math.round(minutes * sttPricePerMinute() * 1e6) / 1e6, provider: env.whisperModel }).eq("job_id", job.id);
 
   if (detected) await db.from("lessons").update({ language: detected }).eq("id", rec.lesson_id);
   await db.from("recordings").update({ status: "ready" }).eq("id", rec.id);
@@ -83,7 +89,7 @@ export async function handleTranscribe(job: Job, ctx: JobContext): Promise<JobOu
     await db.from("usage_records").update({ job_id: id }).eq("job_id", notesJob);
   } else if (!allowed) {
     await db.from("usage_records").delete().eq("job_id", notesJob);
-    await notify(rec.user_id, "notes", hu ? "Elfogyott a havi AI-kereted" : "Monthly AI allowance used up", hu ? "A jegyzetek a következő hónapban vagy csomagváltás után készíthetők el." : "Notes can be generated next month or after upgrading.", `/lessons/${rec.lesson_id}`);
+    await notify(rec.user_id, "notes", hu ? "Elfogyott a havi AI-kereted" : "Monthly AI allowance used up", hu ? "A jegyzetek a következő hónapban készíthetők el." : "Notes can be generated next month.", `/lessons/${rec.lesson_id}`);
   }
   return { status: "done", result: { segments: segments.length, chars: text.length } };
 }

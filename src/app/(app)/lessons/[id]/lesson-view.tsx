@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Download, Loader2, Pencil, Printer, RefreshCw, Trash2 } from "lucide-react";
+import { BookOpenCheck, Brain, Check, Copy, Download, Layers, Loader2, Pencil, Printer, RefreshCw, Trash2 } from "lucide-react";
+import Link from "next/link";
 import type { Dictionary } from "@/lib/i18n/hu";
 import { formatDuration } from "@/lib/i18n/format";
 import { renderMarkdown } from "@/lib/markdown";
 import type { TranscriptSegment } from "@/lib/stt/whisper";
 import { api, ApiError } from "@/lib/recorder/uploader";
-import { Alert, Button, Card, EmptyState, Input, Textarea, cn } from "@/components/ui";
+import { Alert, Button, buttonClass, Card, EmptyState, Input, Select, Textarea, cn } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { saveNoteAction, saveTranscriptAction } from "./actions";
 import { SegmentedPlayer, seekTo } from "./player";
@@ -22,13 +23,15 @@ export function LessonView({
   transcript,
   notes,
   busy,
+  study,
 }: {
   t: Dictionary;
   lesson: { id: string; title: string };
-  recording: { id: string; status: string; error: string | null } | null;
+  recording: { id: string; status: string; error: string | null; audioDeleted: boolean } | null;
   transcript: { segments: TranscriptSegment[]; text: string } | null;
   notes: Note[];
   busy: string[];
+  study: { sets: { id: string; title: string; cards: number }[]; exams: { id: string; title: string; lastScore: number | null }[]; isDocument: boolean };
 }) {
   const L = t.lessons;
   const router = useRouter();
@@ -108,7 +111,8 @@ export function LessonView({
       </div>
 
       {error && <Alert tone="error">{error}</Alert>}
-      {recording && <div className="no-print"><SegmentedPlayer lessonId={lesson.id} label={L.audio} /></div>}
+      {recording && !recording.audioDeleted && <div className="no-print"><SegmentedPlayer lessonId={lesson.id} label={L.audio} /></div>}
+      {recording?.audioDeleted && <p className="no-print text-sm text-subtle">{t.study.audioDeleted}</p>}
 
       {processing && (
         <Alert tone="info">
@@ -122,10 +126,12 @@ export function LessonView({
         </Alert>
       )}
 
+      {transcript?.text?.trim() && !processing && <StudyTools t={t} lessonId={lesson.id} study={study} />}
+
       <div className="no-print flex gap-1 rounded-xl border border-ink-700 bg-ink-900 p-1" role="tablist">
         {(["notes", "transcript"] as const).map((k) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex-1 rounded-lg py-2 text-sm font-medium", tab === k ? "bg-ink-700 text-fg" : "text-muted")}>
-            {k === "notes" ? L.notes : L.transcript}
+            {k === "notes" ? L.notes : study.isDocument ? t.study.sourceText : L.transcript}
           </button>
         ))}
       </div>
@@ -146,6 +152,8 @@ export function LessonView({
             {note && <NoteCard key={note.id} note={note} t={t} lessonTitle={lesson.title} />}
           </>
         )
+      ) : transcript && !transcript.segments.length ? (
+        <DocumentText text={transcript.text} t={t} />
       ) : transcript ? (
         <TranscriptView lessonId={lesson.id} segments={transcript.segments} t={t} />
       ) : (
@@ -266,6 +274,84 @@ function TranscriptView({ lessonId, segments, t }: { lessonId: string; segments:
           <Button loading={saving} onClick={async () => { setSaving(true); try { await saveTranscriptAction(lessonId, segs); setEditing(false); } finally { setSaving(false); } }}>{t.common.save}</Button>
         </div>
       )}
+    </Card>
+  );
+}
+
+function StudyTools({ t, lessonId, study }: { t: Dictionary; lessonId: string; study: { sets: { id: string; title: string; cards: number }[]; exams: { id: string; title: string; lastScore: number | null }[] } }) {
+  const S = t.study;
+  const router = useRouter();
+  const [busy, setBusy] = useState<"cards" | "exam" | null>(null);
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [error, setError] = useState<string | null>(null);
+
+  async function create(kind: "cards" | "exam") {
+    setBusy(kind);
+    setError(null);
+    try {
+      if (kind === "cards") {
+        const r = await api<{ setId: string }>(`/api/lessons/${lessonId}/flashcards`, { method: "POST", json: { count: 15 } });
+        router.push(`/flashcards/${r.setId}`);
+      } else {
+        const r = await api<{ examId: string }>(`/api/lessons/${lessonId}/exams`, { method: "POST", json: { count: 10, difficulty } });
+        router.push(`/exams/${r.examId}`);
+      }
+    } catch (e) {
+      setError(e instanceof ApiError && e.code === "QUOTA_EXCEEDED" ? S.quotaExceeded : t.common.somethingWrong);
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card className="no-print p-4 sm:p-5">
+      <h2 className="text-sm font-medium text-muted">{S.toolsTitle}</h2>
+      {error && <Alert tone="warn" className="mt-3">{error}</Alert>}
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl bg-ink-850 p-3">
+          <p className="flex items-center gap-2 font-medium"><Layers className="size-4 text-lime" aria-hidden /> {S.flashcards}</p>
+          {study.sets.map((s) => (
+            <Link key={s.id} href={`/flashcards/${s.id}`} className="mt-2 block truncate text-sm text-lime hover:underline">{s.title} · {s.cards}</Link>
+          ))}
+          <Button size="sm" variant={study.sets.length ? "secondary" : "primary"} className="mt-3 w-full" loading={busy === "cards"} disabled={busy !== null} onClick={() => create("cards")}>
+            {busy === "cards" ? S.generating : study.sets.length ? S.newDeck : S.createDeck}
+          </Button>
+        </div>
+        <div className="rounded-xl bg-ink-850 p-3">
+          <p className="flex items-center gap-2 font-medium"><BookOpenCheck className="size-4 text-lime" aria-hidden /> {S.exam}</p>
+          {study.exams.map((e) => (
+            <Link key={e.id} href={`/exams/${e.id}`} className="mt-2 block truncate text-sm text-lime hover:underline">
+              {e.title}{e.lastScore !== null ? ` · ${Math.round(e.lastScore)}%` : ""}
+            </Link>
+          ))}
+          <div className="mt-3 flex gap-2">
+            <Select value={difficulty} onChange={(e) => setDifficulty(e.target.value as typeof difficulty)} className="h-8 flex-1 text-sm" aria-label={S.difficulty}>
+              {(["easy", "medium", "hard"] as const).map((d) => <option key={d} value={d}>{S.difficulties[d]}</option>)}
+            </Select>
+            <Button size="sm" loading={busy === "exam"} disabled={busy !== null} onClick={() => create("exam")}>{busy === "exam" ? S.generating : S.createExam}</Button>
+          </div>
+        </div>
+        <div className="rounded-xl bg-ink-850 p-3">
+          <p className="flex items-center gap-2 font-medium"><Brain className="size-4 text-lime" aria-hidden /> {S.tutor}</p>
+          <p className="mt-2 text-sm text-muted">{S.tutorHint}</p>
+          <Link href={`/lessons/${lessonId}/tutor`} className={buttonClass("secondary", "sm", "mt-3 w-full")}>{S.askTutor}</Link>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-subtle">{S.costHint}</p>
+    </Card>
+  );
+}
+
+function DocumentText({ text, t }: { text: string; t: Dictionary }) {
+  const [q, setQ] = useState("");
+  const paragraphs = useMemo(() => text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean), [text]);
+  const needle = q.trim().toLowerCase();
+  const visible = needle ? paragraphs.filter((p) => p.toLowerCase().includes(needle)) : paragraphs;
+  return (
+    <Card className="p-5 sm:p-7">
+      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.lessons.searchTranscript} className="no-print mb-4 h-9 text-sm" aria-label={t.lessons.searchTranscript} />
+      <div className="space-y-3 text-sm leading-relaxed text-fg/90">
+        {visible.map((p, i) => <p key={i} className="whitespace-pre-line">{p}</p>)}
+      </div>
     </Card>
   );
 }

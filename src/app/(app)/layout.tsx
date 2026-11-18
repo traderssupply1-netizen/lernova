@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/dashboard", label: t.nav.dashboard, icon: "home" as const },
     { href: "/record", label: t.nav.record, icon: "mic" as const },
     { href: "/lessons", label: t.nav.lessons, icon: "book" as const },
+    { href: "/study", label: t.nav.study, icon: "cards" as const },
     { href: "/settings", label: t.nav.settings, icon: "settings" as const },
     ...(session.isAdmin ? [{ href: "/admin", label: t.nav.admin, icon: "shield" as const }] : []),
   ] satisfies NavItem[];
@@ -33,7 +34,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <AppNav items={items} variant="side" />
         <div className="mt-auto border-t border-ink-800 pt-4">
           <p className="truncate px-2 text-sm font-medium">{session.profile.full_name || session.email}</p>
-          <p className="truncate px-2 text-xs text-subtle">{session.plan.toUpperCase()}</p>
           <form action={logoutAction} className="mt-3">
             <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted hover:bg-ink-800 hover:text-fg">
               <LogOut className="size-4" aria-hidden /> {t.nav.logout}

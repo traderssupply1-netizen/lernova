@@ -15,7 +15,6 @@ export default async function MarketingLayout({ children }: { children: React.Re
           <Logo />
           <div className="hidden items-center gap-6 text-sm text-muted md:flex">
             <Link href="/#features" className="hover:text-fg">{t.nav.features}</Link>
-            <Link href="/#pricing" className="hover:text-fg">{t.nav.pricing}</Link>
             <Link href="/#faq" className="hover:text-fg">{t.nav.faq}</Link>
           </div>
           <div className="flex items-center gap-2">

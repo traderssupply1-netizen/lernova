@@ -18,7 +18,12 @@ export async function handleGenerateNotes(job: Job): Promise<JobOutcome> {
 
   const { data: notes, usage } = await generateStructured({
     system: notesSystemPrompt(language),
-    prompt: notesUserPrompt({ subject, title: lesson.title, transcript: transcriptForPrompt(transcript.segments as TranscriptSegment[]) }),
+    prompt: notesUserPrompt({
+      subject,
+      title: lesson.title,
+      // Documents have plain text without timestamps.
+      transcript: (transcript.segments as TranscriptSegment[])?.length ? transcriptForPrompt(transcript.segments as TranscriptSegment[]) : transcript.text.slice(0, 180_000),
+    }),
     schema: notesSchema,
     name: "lesson_notes",
     maxTokens: 12000,

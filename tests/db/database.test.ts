@@ -68,6 +68,8 @@ beforeAll(async () => {
   await sql(readFileSync(join(root, "supabase/migrations/20261118000003_seed_config.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000004_segment_transcripts.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000005_revoke_anon_rpc.sql"), "utf8"));
+  await sql(readFileSync(join(root, "supabase/migrations/20261118000006_fast_session_and_stats.sql"), "utf8"));
+  await sql(readFileSync(join(root, "supabase/migrations/20261118000007_no_subscriptions_study_tools.sql"), "utf8"));
 });
 
 beforeEach(async () => {
@@ -151,14 +153,35 @@ describe("invitation-only registration", () => {
     expect(await sql("select * from profiles")).toHaveLength(3);
   });
 
-  it("grants premium for the configured period", async () => {
+  it("gives everyone the same allowance, even with a legacy paid-plan code", async () => {
     await createCode({ code: "LRN-PREMIUM", plan: "premium", days: 30 });
     const { userId } = await register("LRN-PREMIUM", "vip@example.com");
     const [{ effective_plan }] = await sql("select effective_plan($1)", [userId]);
-    expect(effective_plan).toBe("premium");
-    await sql("update subscriptions set current_period_end = now() - interval '1 day' where source = 'invitation'");
-    const [{ effective_plan: after }] = await sql("select effective_plan($1)", [userId]);
-    expect(after).toBe("free");
+    expect(effective_plan).toBe("free");
+    const [{ quota_remaining }] = await sql("select quota_remaining($1, 'ai_requests')", [userId]);
+    expect(Number(quota_remaining)).toBe(50);
+    const [{ my_allowance }] = await asUser(userId, (c) => c.query("select my_allowance()")).then((r) => r.rows);
+    expect(Number(my_allowance.recording_minutes.limit)).toBe(300);
+    expect(Number(my_allowance.ai_requests.left)).toBe(50);
+  });
+
+  it("schedules flashcards with SM-2 and only for their owner", async () => {
+    await createCode({ code: "LRN-CARDS", limit: 2 });
+    const { userId } = await register("LRN-CARDS", "cards@example.com");
+    const { userId: other } = await register("LRN-CARDS", "other@example.com");
+    const [set] = await sql("insert into flashcard_sets (user_id, title) values ($1, 'S') returning id", [userId]);
+    const [card] = await sql("insert into flashcards (user_id, set_id, question, answer) values ($1, $2, 'Q', 'A') returning id", [userId, set.id]);
+    const r1 = (await asUser(userId, (c) => c.query("select * from review_flashcard($1, 5::smallint)", [card.id]))).rows[0];
+    expect(r1.repetitions).toBe(1);
+    expect(r1.interval_days).toBe(1);
+    const r2 = (await asUser(userId, (c) => c.query("select * from review_flashcard($1, 4::smallint)", [card.id]))).rows[0];
+    expect(r2.interval_days).toBe(6);
+    const r3 = (await asUser(userId, (c) => c.query("select * from review_flashcard($1, 1::smallint)", [card.id]))).rows[0];
+    expect(r3.repetitions).toBe(0);
+    expect(Number(r3.ease_factor)).toBeLessThan(2.5);
+    expect(await errorOf(asUser(other, (c) => c.query("select review_flashcard($1, 5::smallint)", [card.id])))).toContain("NOT_FOUND");
+    const [{ n }] = await sql("select count(*)::int as n from flashcard_reviews where flashcard_id = $1", [card.id]);
+    expect(n).toBe(3);
   });
 
   it("locks private invitations to their email", async () => {
@@ -227,13 +250,13 @@ describe("quotas, rate limits and jobs", () => {
   it("consume_quota respects plan limits and refunds failed jobs", async () => {
     await createCode({ code: "LRN-QUOTA" });
     const { userId } = await register("LRN-QUOTA", "q@example.com");
-    const [{ consume_quota: first }] = await sql("select consume_quota($1, 'exams_generated', 3, null, $2)", [userId, "00000000-0000-0000-0000-000000000001"]);
+    const [{ consume_quota: first }] = await sql("select consume_quota($1, 'exams_generated', 10, null, $2)", [userId, "00000000-0000-0000-0000-000000000001"]);
     expect(first).toBe(true);
     const [{ consume_quota: second }] = await sql("select consume_quota($1, 'exams_generated', 1)", [userId]);
     expect(second).toBe(false);
     await sql("select refund_usage('00000000-0000-0000-0000-000000000001')");
     const [{ quota_remaining }] = await sql("select quota_remaining($1, 'exams_generated')", [userId]);
-    expect(Number(quota_remaining)).toBe(3);
+    expect(Number(quota_remaining)).toBe(10);
   });
 
   it("hit_rate_limit blocks after the maximum", async () => {

@@ -8,14 +8,14 @@ const content = {
     ["A szolgáltatás", "A LERNOVA AI-alapú tanulási asszisztens. Az AI által készített anyagok hibát tartalmazhatnak; mindig ellenőrizd őket az eredeti forrással."],
     ["Fiók és meghívó", "A regisztráció jelenleg meghívókóddal lehetséges. A fiókodért és a jelszavad biztonságáért te felelsz."],
     ["Felvételek", "Kizárólag hozzájárulással és a vonatkozó szabályok betartásával rögzíthetsz. Titkos felvétel készítése tilos, és a fiók felfüggesztését vonhatja maga után."],
-    ["Előfizetés", "A fizetős csomagok havonta vagy évente megújulnak, és bármikor lemondhatók a periódus végére. Az árak és keretek változhatnak; erről előre értesítünk."],
+    ["Használati keret", "A szolgáltatás díjmentes. Minden felhasználónak azonos havi kerete van (felvételi perc és AI-kérések), amelyet az üzemeltető módosíthat. A hangfelvételek egy idő után automatikusan törlődnek; az átirat és a jegyzetek megmaradnak."],
     ["Elfogadható használat", "Tilos a szolgáltatás automatizált túlterhelése, más adataihoz való hozzáférés kísérlete és jogsértő tartalom feltöltése."],
   ],
   en: [
     ["The service", "LERNOVA is an AI study assistant. AI-generated material can contain mistakes; always check it against the original source."],
     ["Accounts and invitations", "Registration currently requires an invitation code. You are responsible for your account and password security."],
     ["Recordings", "Record only with consent and in line with applicable rules. Secret recording is prohibited and may lead to suspension."],
-    ["Subscriptions", "Paid plans renew monthly or annually and can be cancelled at any time, effective at the end of the period. Prices and limits may change with advance notice."],
+    ["Usage allowance", "The service is free of charge. Every user has the same monthly allowance (recording minutes and AI requests), which the operator may change. Audio recordings are deleted automatically after a while; transcripts and notes are kept."],
     ["Acceptable use", "Do not overload the service with automation, attempt to access other users' data, or upload unlawful content."],
   ],
 } as const;

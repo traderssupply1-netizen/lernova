@@ -14,19 +14,19 @@ export default async function AdminOverview() {
   const since30 = daysAgoIso(30);
   const count = (q: PromiseLike<{ count: number | null }>) => Promise.resolve(q).then((r) => r.count ?? 0);
 
-  const [users, newUsers, activeCodes, redemptions, failedJobs, aiRows, subs, recMinutes] = await Promise.all([
+  const [users, newUsers, activeCodes, redemptions, failedJobs, aiRows, recMinutes, sttRows] = await Promise.all([
     count(db.from("profiles").select("id", { count: "exact", head: true })),
     count(db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since7)),
     count(db.from("invitation_codes").select("id", { count: "exact", head: true }).eq("status", "active")),
     count(db.from("invitation_redemptions").select("id", { count: "exact", head: true }).eq("status", "redeemed")),
     count(db.from("processing_jobs").select("id", { count: "exact", head: true }).eq("status", "failed").gte("created_at", since30)),
     db.from("usage_records").select("amount, cost_usd").eq("metric", "ai_requests").gte("created_at", since30),
-    db.from("subscriptions").select("plan_id").in("status", ["active", "trialing", "past_due"]).neq("plan_id", "free"),
     db.from("usage_records").select("amount").eq("metric", "recording_minutes").gte("created_at", since30),
+    db.from("usage_records").select("cost_usd").eq("metric", "transcription_minutes").gte("created_at", since30),
   ]);
   const aiRequests = (aiRows.data ?? []).reduce((a, r) => a + Number(r.amount), 0);
   const aiCost = (aiRows.data ?? []).reduce((a, r) => a + Number(r.cost_usd), 0);
-  const dist = (subs.data ?? []).reduce<Record<string, number>>((a, r) => ({ ...a, [r.plan_id]: (a[r.plan_id] ?? 0) + 1 }), {});
+  const sttCost = (sttRows.data ?? []).reduce((a, r) => a + Number(r.cost_usd), 0);
   const minutes = (recMinutes.data ?? []).reduce((a, r) => a + Number(r.amount), 0);
 
   return (
@@ -41,9 +41,9 @@ export default async function AdminOverview() {
         <Stat label={t.admin.failedJobs} value={failedJobs} />
       </div>
       <Card className="mt-4 p-5">
-        <p className="text-xs uppercase tracking-wider text-subtle">Plus / Premium · {t.common.minutes} (30d)</p>
+        <p className="text-xs uppercase tracking-wider text-subtle">{t.admin.costs30d}</p>
         <p className="mt-2 text-sm text-muted">
-          Plus: <span className="text-fg">{dist.plus ?? 0}</span> · Premium: <span className="text-fg">{dist.premium ?? 0}</span> · {Math.round(minutes)} {t.common.minutes}
+          {Math.round(minutes)} {t.common.minutes} · AI ≈ <span className="text-fg">${aiCost.toFixed(2)}</span> · {t.admin.transcription} ≈ <span className="text-fg">${sttCost.toFixed(2)}</span> · {t.admin.total} ≈ <span className="text-lime">${(aiCost + sttCost).toFixed(2)}</span>
         </p>
       </Card>
     </>

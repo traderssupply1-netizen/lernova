@@ -19,7 +19,7 @@ export function GenerateForm({ t }: { t: Dictionary["admin"] }) {
         <div>
           <Label htmlFor="type">{t.type}</Label>
           <Select id="type" name="type" value={type} onChange={(e) => setType(e.target.value)}>
-            {(["general", "plus", "premium", "private"] as const).map((k) => <option key={k} value={k}>{t.types[k]}</option>)}
+            {(["general", "private"] as const).map((k) => <option key={k} value={k}>{t.types[k]}</option>)}
           </Select>
         </div>
         <div>
@@ -34,22 +34,6 @@ export function GenerateForm({ t }: { t: Dictionary["admin"] }) {
           <Label htmlFor="expiresAt">{t.expiresAt}</Label>
           <Input id="expiresAt" name="expiresAt" type="date" />
         </div>
-        {type === "private" && (
-          <div>
-            <Label htmlFor="privatePlan">{t.plan}</Label>
-            <Select id="privatePlan" name="privatePlan" defaultValue="free">
-              <option value="free">Free</option>
-              <option value="plus">Plus</option>
-              <option value="premium">Premium</option>
-            </Select>
-          </div>
-        )}
-        {(type === "plus" || type === "premium" || type === "private") && (
-          <div>
-            <Label htmlFor="benefitDays">{t.benefitDays}</Label>
-            <Input id="benefitDays" name="benefitDays" type="number" min={1} max={3650} placeholder="∞" />
-          </div>
-        )}
         <div>
           <Label htmlFor="prefix">{t.prefix}</Label>
           <Input id="prefix" name="prefix" defaultValue="LRN" maxLength={8} className="font-mono uppercase" />

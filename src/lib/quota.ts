@@ -47,3 +47,28 @@ export async function chargeAndEnqueue(opts: {
     throw e;
   }
 }
+
+/**
+ * Runs a synchronous AI action against the monthly allowance: charges first,
+ * refunds automatically if the action fails, and records the real cost.
+ */
+export async function withAllowance<T>(
+  userId: string,
+  metric: Metric,
+  amount: number,
+  fn: () => Promise<{ value: T; costUsd?: number; provider?: string }>,
+): Promise<{ ok: true; value: T } | { ok: false; reason: "QUOTA_EXCEEDED" }> {
+  const db = createAdminClient();
+  const ref = crypto.randomUUID();
+  const { data: allowed, error } = await db.rpc("consume_quota", { p_user: userId, p_metric: metric, p_amount: amount, p_provider: null, p_job: ref, p_cost: 0 });
+  if (error) throw new Error(error.message);
+  if (!allowed) return { ok: false, reason: "QUOTA_EXCEEDED" };
+  try {
+    const { value, costUsd, provider } = await fn();
+    await db.from("usage_records").update({ cost_usd: Math.round((costUsd ?? 0) * 1e6) / 1e6, provider: provider ?? null }).eq("job_id", ref);
+    return { ok: true, value };
+  } catch (e) {
+    await db.rpc("refund_usage", { p_job: ref });
+    throw e;
+  }
+}

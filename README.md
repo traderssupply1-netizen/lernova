@@ -13,29 +13,33 @@ Stack: Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 
 |---|---|---|
 | Design system (dark/lime, responsive, iPhone safe areas) | ✅ Done | `src/components/ui` |
 | HU/EN interface, persistent language | ✅ Done | Separate settings for interface and AI-material language |
-| Landing page, pricing (from the DB), FAQ, legal pages | ✅ Done | Legal text is a **draft**: needs review by a lawyer |
+| Landing page, FAQ, legal pages | ✅ Done | No pricing: the app is free. Legal text is a **draft**: needs review by a lawyer |
 | **Invite-only registration** | ✅ Done + tested | Transactional reservation, DB trigger blocks bypassing the API, race-safe, rate limited |
 | Login, logout, email verification, password reset, sign out of all devices | ✅ Done | Requires Supabase email templates (see below) |
 | Google OAuth | ⚙️ Partial | The `/auth/confirm` code flow is ready. A new OAuth user only gets through with a live invite reservation. There is no UI button yet |
 | Admin: invite generation, editing, revoking, redemptions, CSV export | ✅ Done | All changes go to the audit log |
-| Admin: users (search, suspend, admin role), plan limits, AI provider switch, errors | ✅ Done | Only a super admin can grant roles, and never to themselves |
+| Admin: users (search, suspend, admin role), monthly allowance, audio retention, AI provider switch, costs, errors | ✅ Done | Only a super admin can grant roles, and never to themselves |
 | Dashboard (real data: streak, weekly chart, allowance, recent lessons/notes) | ✅ Done | |
 | **Smart Recorder** | ✅ Done | Pause/resume, waveform, level meter, 5-min segments, IndexedDB recovery, retrying upload, Wake Lock, iOS tips, consent |
-| Whisper transcription (HU/EN/auto, timestamps, uncertainty flags) | ✅ Done* | Resumable per segment, retry limit, background job |
-| AI notes (quick / detailed / exam, timestamp citations, AI explanation kept separate) | ✅ Done* | Claude or OpenAI, structured output with zod validation |
+| Transcription (gpt-4o-mini-transcribe, HU/EN/auto, uncertainty flags) | ✅ Done* | Resumable per segment, background job. Timestamps are estimated per sentence (exact with `OPENAI_TRANSCRIBE_MODEL=whisper-1`) |
+| AI notes (quick / detailed / exam, timestamp citations, AI explanation kept separate) | ✅ Done* | gpt-4.1-mini by default (Claude optional), structured output with zod validation |
 | Lesson page: transcript search/edit/copy, jump to timestamp, playback, note editing, MD/Word/PDF export, delete | ✅ Done | Word = HTML-based .doc |
-| Usage quotas, refund on failure, AI cost tracking | ✅ Done + tested | |
+| One monthly allowance for everyone (admin-set), refund on failure, AI cost tracking | ✅ Done + tested | Default: 300 recording min, 50 AI requests, 10 exams, 10 documents |
+| Audio retention (default 30 days) | ✅ Done | Daily job deletes old audio; transcript and notes stay |
 | GDPR: data export (JSON), account deletion with files | ✅ Done | |
 | Security headers (CSP, HSTS, Permissions-Policy) | ✅ Done | |
-| Flashcards (SM-2), Exam Generator, AI Tutor, Document AI | 🗄️ Schema only | Tables and RLS exist, no UI/logic yet. The landing page labels them "In development" |
+| Flashcards (AI-generated decks, SM-2 review, daily review) | ✅ Done* | SM-2 runs in the DB (`review_flashcard`), tested |
+| Practice exams (multiple choice, true/false, short answer; AI grading of written answers; weak topics) | ✅ Done* | |
+| AI tutor per lesson (4 modes, grounded in the lesson, says when something was not covered) | ✅ Done* | Last 12 messages as context |
+| Document AI (PDF, Word, .txt → lesson with notes, flashcards, exams, tutor) | ✅ Done* | Scanned (image-only) PDFs are reported, not guessed (no OCR) |
 | Study planner, analytics page, gamification (XP/levels) | 🗄️ Partial | Achievements and study_sessions are recorded |
-| Stripe subscriptions, webhooks | ❌ Not yet | Plans and `effective_plan` are ready, invite-based plans work |
+| Paid subscriptions | ➖ Removed | By decision: invite-only, free, one shared monthly allowance. Plan tables remain; `effective_plan` always returns the standard allowance |
 | Notifications UI | ⚙️ Partial | Written to the DB (transcript/notes ready), but there is no bell/list in the UI yet |
 | E2E tests (Playwright) | ❌ Not yet | Requires a live Supabase project |
 
 \* Needs an API key: without one, it fails with a clear `INTEGRATION_NOT_CONFIGURED` message and is never simulated.
 
-**This is not production-ready**: Stripe, the remaining learning modules and E2E tests are missing, and the legal texts are drafts.
+**Status:** suitable for a small invite-only group (20–30 users). Not yet covered: E2E tests, study planner/analytics UI, notifications UI; the legal texts are drafts.
 
 ---
 
@@ -45,11 +49,11 @@ Stack: Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 
 npm run typecheck   # clean
 npm run lint        # clean
 npm run build       # clean
-npm test            # 26/26 passed
+npm test            # 35/35 passed
 ```
 
-- **Database (16 tests, real PostgreSQL 16 with a Supabase shim):** valid code → profile/role/plan; direct signUp without a code is **blocked**; invalid/disabled/revoked/expired codes; usage limit; **failed account creation does not consume the code**; reservation expiry; **15 parallel registrations on a 3-use code → exactly 3**; premium expiry; private code bound to an email; anon/authenticated cannot call internal functions; **data isolation** (cannot read or write another user's lesson); users cannot make themselves admin, change their plan or edit protected profile fields; admin/super admin permissions + audit log; quota + refund; rate limit; the job queue gives each job to exactly one worker.
-- **Unit (10):** safe Markdown rendering (XSS-proof), timestamps, streak/time zones.
+- **Database (17 tests, real PostgreSQL 16 with a Supabase shim):** valid code → profile/role/plan; direct signUp without a code is **blocked**; invalid/disabled/revoked/expired codes; usage limit; **failed account creation does not consume the code**; reservation expiry; **15 parallel registrations on a 3-use code → exactly 3**; legacy paid-plan codes give the standard allowance; SM-2 scheduling and card ownership; private code bound to an email; anon/authenticated cannot call internal functions; **data isolation** (cannot read or write another user's lesson); users cannot make themselves admin, change their plan or edit protected profile fields; admin/super admin permissions + audit log; quota + refund; rate limit; the job queue gives each job to exactly one worker.
+- **Unit (18):** safe Markdown rendering (XSS-proof), timestamps, streak/time zones, exam answer checking, estimated transcript timestamps, document text extraction.
 - **Manual:** pages render in HU and EN; layout checked at iPhone (390 px) and desktop (1440 px) sizes.
 - **Not yet tested:** recording on a real iPhone, a real Whisper/Claude call, the email flow. These need a live project and keys.
 
@@ -78,12 +82,14 @@ npm run dev
 Run `supabase/bootstrap.sql` (enter your own email).
 
 ### 3. AI and transcription
-- `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`. Whisper uses the OpenAI key.
+- `OPENAI_API_KEY` (required: text and speech). `ANTHROPIC_API_KEY` is optional.
+- Defaults: `gpt-4.1-mini` for text and `gpt-4o-mini-transcribe` for speech. Override with `OPENAI_MODEL` / `OPENAI_TRANSCRIBE_MODEL`.
+- Rough cost: 1 hour of lecture ≈ $0.18 transcription + ~$0.02 notes; a flashcard deck, exam or tutor answer ≈ $0.01.
 - Switch the active provider in `/admin/system`.
 
 ### 4. Background worker
 Long processing does not depend on a browser request: `processing_jobs` + `/api/jobs/run`.
-- **Vercel:** `vercel.json` runs it every minute. Per-minute cron needs the Pro plan.
+- **Vercel Hobby:** `vercel.json` runs it once a day (safety net + audio clean-up). Per-minute cron needs the Pro plan.
 - **Or Supabase pg_cron:** see the end of `bootstrap.sql`.
 - After uploading, the server also starts it right away with `after()`. The cron is the safety net.
 

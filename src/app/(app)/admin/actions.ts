@@ -9,24 +9,19 @@ export type GenerateState = { error?: string; codes?: string[] } | undefined;
 
 const generateSchema = z.object({
   count: z.coerce.number().int().min(1).max(500),
-  type: z.enum(["general", "plus", "premium", "private"]),
+  type: z.enum(["general", "private"]),
   usageLimit: z.coerce.number().int().min(1).max(100000),
   expiresAt: z.string().optional().transform((v) => (v ? new Date(v + "T23:59:59Z").toISOString() : null)),
-  benefitDays: z.string().optional().transform((v) => (v ? Number(v) : null)).pipe(z.number().int().min(1).max(3650).nullable()),
   prefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{0,8}$/).default("LRN"),
   note: z.string().max(500).optional(),
   restrictedEmail: z.string().trim().max(254).optional(),
 });
-
-const PLAN_FOR_TYPE = { general: "free", plus: "plus", premium: "premium", private: "free" } as const;
 
 export async function generateInvitationsAction(_: GenerateState, formData: FormData): Promise<GenerateState> {
   await requireAdmin();
   const parsed = generateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues.map((i) => i.path.join(".")).join(", ") };
   const d = parsed.data;
-  const privatePlan = z.enum(["free", "plus", "premium"]).catch("free").parse(formData.get("privatePlan"));
-  const plan = d.type === "private" ? privatePlan : PLAN_FOR_TYPE[d.type];
   if (d.restrictedEmail && !z.email().safeParse(d.restrictedEmail).success) return { error: "restrictedEmail" };
 
   const supabase = await createClient();
@@ -35,8 +30,8 @@ export async function generateInvitationsAction(_: GenerateState, formData: Form
     p_type: d.type,
     p_usage_limit: d.type === "private" ? Math.min(d.usageLimit, 5) : d.usageLimit,
     p_expires_at: d.expiresAt,
-    p_plan_id: plan,
-    p_benefit_days: plan === "free" ? null : d.benefitDays,
+    p_plan_id: "free",
+    p_benefit_days: null,
     p_prefix: d.prefix,
     p_note: d.note || null,
     p_restricted_email: d.restrictedEmail || null,
@@ -94,20 +89,20 @@ async function audit(actor: string, action: string, targetType: string, targetId
   await createAdminClient().from("admin_audit_logs").insert({ actor_id: actor, action, target_type: targetType, target_id: targetId, details });
 }
 
-export async function updatePlanLimitsAction(formData: FormData) {
+/** Updates the single monthly allowance every user gets, and the audio retention period. */
+export async function updateAllowanceAction(formData: FormData) {
   const s = await requireAdmin();
-  const id = z.enum(["free", "plus", "premium"]).parse(formData.get("id"));
-  const metrics = ["recording_minutes", "transcription_minutes", "ai_requests", "document_uploads", "exams_generated", "storage_mb"];
-  const limits = Object.fromEntries(metrics.map((m) => [m, z.coerce.number().int().min(0).max(1_000_000).parse(formData.get(m))]));
-  const monthly = z.coerce.number().int().min(0).max(1_000_000).parse(formData.get("monthly_price_cents"));
-  const annual = z.coerce.number().int().min(0).max(10_000_000).parse(formData.get("annual_price_cents"));
+  const metrics = ["recording_minutes", "transcription_minutes", "ai_requests", "document_uploads", "exams_generated"];
+  const n = (v: FormDataEntryValue | null) => z.coerce.number().int().min(0).max(1_000_000).parse(v);
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("subscription_plans")
-    .update({ limits, monthly_price_cents: monthly, annual_price_cents: annual })
-    .eq("id", id);
+  const { data: current } = await supabase.from("subscription_plans").select("limits").eq("id", "free").single();
+  const limits = { ...(current?.limits as Record<string, number>), ...Object.fromEntries(metrics.map((m) => [m, n(formData.get(m))])) };
+  const retention = z.coerce.number().int().min(1).max(3650).parse(formData.get("audio_retention_days"));
+  const { error } = await supabase.from("subscription_plans").update({ limits }).eq("id", "free");
   if (error) throw new Error(error.message);
-  await audit(s.userId, "plan_updated", "plan", id, { limits, monthly, annual });
+  const { error: e2 } = await supabase.from("app_settings").upsert({ key: "audio_retention_days", value: retention, updated_by: s.userId });
+  if (e2) throw new Error(e2.message);
+  await audit(s.userId, "allowance_updated", "setting", "allowance", { limits, retention });
   revalidatePath("/admin/system");
 }
 

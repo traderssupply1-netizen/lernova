@@ -3,6 +3,9 @@ import { body, fail, json, kickWorker, route } from "@/lib/api";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { chargeAndEnqueue } from "@/lib/quota";
 
+// The background worker runs in after() and needs time for transcription and notes.
+export const maxDuration = 300;
+
 const schema = z.object({ retry: z.boolean().optional() });
 
 /**
