@@ -1,3 +1,4 @@
 {
-  "crons": [{ "path": "/api/jobs/run", "schedule": "* * * * *" }]
+  "regions": ["fra1"],
+  "crons": [{ "path": "/api/jobs/run", "schedule": "17 3 * * *" }]
 }
