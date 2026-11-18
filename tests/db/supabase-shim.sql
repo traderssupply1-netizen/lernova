@@ -2,6 +2,8 @@
 -- schema, RLS and invitation logic can be tested against plain PostgreSQL.
 create schema if not exists auth;
 create schema if not exists storage;
+create schema if not exists extensions;
+grant usage on schema extensions to public;
 
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;

@@ -62,11 +62,12 @@ async function errorOf(p: Promise<unknown>) {
 }
 
 beforeAll(async () => {
-  await sql("drop schema if exists public cascade; drop schema if exists auth cascade; create schema public;");
+  await sql("drop schema if exists public cascade; drop schema if exists auth cascade; drop schema if exists extensions cascade; create schema public;");
   await sql(readFileSync(join(root, "tests/db/supabase-shim.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000001_core_schema.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000003_seed_config.sql"), "utf8"));
   await sql(readFileSync(join(root, "supabase/migrations/20261118000004_segment_transcripts.sql"), "utf8"));
+  await sql(readFileSync(join(root, "supabase/migrations/20261118000005_revoke_anon_rpc.sql"), "utf8"));
 });
 
 beforeEach(async () => {

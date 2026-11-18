@@ -14,12 +14,12 @@ on conflict (id) do nothing;
 
 create policy "owner reads own files" on storage.objects for select to authenticated
   using (bucket_id in ('recordings', 'documents', 'exports', 'avatars')
-         and (storage.foldername(name))[1] = auth.uid()::text);
+         and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 create policy "owner uploads own files" on storage.objects for insert to authenticated
   with check (bucket_id in ('recordings', 'documents', 'avatars')
-              and (storage.foldername(name))[1] = auth.uid()::text);
+              and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 create policy "owner deletes own files" on storage.objects for delete to authenticated
   using (bucket_id in ('recordings', 'documents', 'exports', 'avatars')
-         and (storage.foldername(name))[1] = auth.uid()::text);
+         and (storage.foldername(name))[1] = (select auth.uid())::text);

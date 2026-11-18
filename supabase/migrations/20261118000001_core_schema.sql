@@ -3,7 +3,7 @@
 -- Writes to billing, roles, quotas and invitations happen only through the service role
 -- or SECURITY DEFINER functions with explicit checks.
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ---------------------------------------------------------------------------
 -- Enums
@@ -21,7 +21,7 @@ create type public.note_kind as enum ('quick', 'detailed', 'exam');
 -- Helpers
 -- ---------------------------------------------------------------------------
 create or replace function public.touch_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = public as $$
 begin
   new.updated_at := now();
   return new;
@@ -387,7 +387,7 @@ create or replace function public.admin_generate_invitations(
   p_expires_at timestamptz, p_plan_id text, p_benefit_days integer,
   p_prefix text default 'LRN', p_note text default null, p_restricted_email text default null
 ) returns setof public.invitation_codes
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   i integer;
   v_code text;
@@ -519,6 +519,7 @@ create table public.recordings (
   finalized_at timestamptz
 );
 create index on public.recordings (user_id, created_at desc);
+create index on public.recordings (lesson_id);
 
 -- One row per uploaded segment (each segment is an independently playable file).
 create table public.recording_upload_chunks (
@@ -765,6 +766,7 @@ create table public.usage_records (
   created_at timestamptz not null default now()
 );
 create index on public.usage_records (user_id, metric, created_at);
+create index on public.usage_records (job_id);
 
 create or replace function public.usage_this_month(p_user uuid, p_metric text)
 returns numeric language sql stable security definer set search_path = public as $$
@@ -855,39 +857,39 @@ begin
     'study_sessions']
   loop
     execute format('alter table public.%I enable row level security', t);
-    execute format('create policy "own rows" on public.%I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+    execute format('create policy "own rows" on public.%I for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
   end loop;
 end $$;
 
 -- Read-only to the owner; written by server/service role only.
 alter table public.profiles enable row level security;
-create policy "read own profile" on public.profiles for select to authenticated using (id = auth.uid() or public.is_admin());
-create policy "update own profile" on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+create policy "read own profile" on public.profiles for select to authenticated using (id = (select auth.uid()) or public.is_admin());
+create policy "update own profile" on public.profiles for update to authenticated using (id = (select auth.uid())) with check (id = (select auth.uid()));
 revoke update on public.profiles from authenticated, anon;
 grant update (full_name, avatar_url, country, ui_language, ai_language, timezone, notification_prefs, daily_goal_minutes, training_consent)
   on public.profiles to authenticated;
 
 alter table public.user_roles enable row level security;
-create policy "read own roles" on public.user_roles for select to authenticated using (user_id = auth.uid() or public.is_admin());
+create policy "read own roles" on public.user_roles for select to authenticated using (user_id = (select auth.uid()) or public.is_admin());
 
 alter table public.subscriptions enable row level security;
-create policy "read own subscriptions" on public.subscriptions for select to authenticated using (user_id = auth.uid() or public.is_admin());
+create policy "read own subscriptions" on public.subscriptions for select to authenticated using (user_id = (select auth.uid()) or public.is_admin());
 
 alter table public.usage_records enable row level security;
-create policy "read own usage" on public.usage_records for select to authenticated using (user_id = auth.uid() or public.is_admin());
+create policy "read own usage" on public.usage_records for select to authenticated using (user_id = (select auth.uid()) or public.is_admin());
 
 alter table public.processing_jobs enable row level security;
-create policy "read own jobs" on public.processing_jobs for select to authenticated using (user_id = auth.uid() or public.is_admin());
+create policy "read own jobs" on public.processing_jobs for select to authenticated using (user_id = (select auth.uid()) or public.is_admin());
 
 alter table public.notifications enable row level security;
-create policy "read own notifications" on public.notifications for select to authenticated using (user_id = auth.uid());
-create policy "mark own notifications" on public.notifications for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy "delete own notifications" on public.notifications for delete to authenticated using (user_id = auth.uid());
+create policy "read own notifications" on public.notifications for select to authenticated using (user_id = (select auth.uid()));
+create policy "mark own notifications" on public.notifications for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "delete own notifications" on public.notifications for delete to authenticated using (user_id = (select auth.uid()));
 revoke update on public.notifications from authenticated, anon;
 grant update (read_at) on public.notifications to authenticated;
 
 alter table public.user_achievements enable row level security;
-create policy "read own achievements" on public.user_achievements for select to authenticated using (user_id = auth.uid());
+create policy "read own achievements" on public.user_achievements for select to authenticated using (user_id = (select auth.uid()));
 
 alter table public.achievements enable row level security;
 create policy "achievements readable" on public.achievements for select to anon, authenticated using (true);
