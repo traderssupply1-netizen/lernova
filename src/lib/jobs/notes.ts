@@ -1,5 +1,4 @@
-import "server-only";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateStructured } from "@/lib/ai/provider";
 import { notesSchema, notesSystemPrompt, notesUserPrompt, transcriptForPrompt } from "@/lib/ai/notes";
 import type { TranscriptSegment } from "@/lib/stt/whisper";

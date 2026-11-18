@@ -1,4 +1,3 @@
-import "server-only";
 
 /**
  * Server-side configuration. Missing integrations are reported, never faked:

@@ -1,5 +1,4 @@
-import "server-only";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ConfigError } from "@/lib/env";
 import { handleTranscribe } from "./transcribe";
 import { handleGenerateNotes } from "./notes";

@@ -1,9 +1,8 @@
-import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { z } from "zod";
 import { ConfigError, env } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ProviderId = "anthropic" | "openai";
 export type ChatMessage = { role: "user" | "assistant"; content: string };

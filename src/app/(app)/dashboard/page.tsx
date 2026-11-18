@@ -18,20 +18,19 @@ export default async function DashboardPage() {
   const since = daysAgoIso(120);
   const today = todayIso();
 
-  const [lessonsCount, sessions, allTime, recentLessons, recentNotes, exams, quota] = await Promise.all([
-    supabase.from("lessons").select("id", { count: "exact", head: true }),
-    supabase.from("study_sessions").select("started_at, duration_seconds").gte("started_at", since).order("started_at", { ascending: false }).limit(2000),
-    supabase.from("study_sessions").select("duration_seconds").limit(10000),
+  const [stats, recentLessons, recentNotes, exams] = await Promise.all([
+    supabase.rpc("my_dashboard", { p_since: since }),
     supabase.from("lessons").select("id, title, created_at, subjects(name, color), recordings(status)").order("created_at", { ascending: false }).limit(5),
     supabase.from("notes").select("id, title, kind, lesson_id, updated_at").eq("kind", "quick").order("updated_at", { ascending: false }).limit(4),
     supabase.from("exams").select("id, title, scheduled_for").gte("scheduled_for", today).order("scheduled_for").limit(4),
-    supabase.rpc("my_quota", { p_metric: "recording_minutes" }),
   ]);
-
-  const sess = sessions.data ?? [];
+  const st = (stats.data ?? { lessons: 0, total_seconds: 0, sessions: [], recording_left: 0 }) as {
+    lessons: number; total_seconds: number; sessions: { started_at: string; duration_seconds: number }[]; recording_left: number;
+  };
+  const sess = st.sessions;
   const todayKey = dayKey(new Date(), tz);
   const todayMinutes = Math.round(sess.filter((x) => dayKey(new Date(x.started_at), tz) === todayKey).reduce((a, x) => a + x.duration_seconds, 0) / 60);
-  const totalMinutes = Math.round((allTime.data ?? []).reduce((a, x) => a + x.duration_seconds, 0) / 60);
+  const totalMinutes = Math.round(Number(st.total_seconds) / 60);
   const streak = computeStreak(sess.map((x) => new Date(x.started_at)), tz);
   const week = lastNDays(sess, tz, 7);
   const maxDay = Math.max(s.profile.daily_goal_minutes, ...week.map((w) => w.minutes));
@@ -72,7 +71,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={D.todayMinutes} value={`${todayMinutes} ${t.common.minutes}`} sub={`/ ${s.profile.daily_goal_minutes} ${t.common.minutes}`} />
-        <Stat label={D.totalLessons} value={lessonsCount.count ?? 0} />
+        <Stat label={D.totalLessons} value={st.lessons} />
         <Stat label={D.totalMinutes} value={`${totalMinutes} ${t.common.minutes}`} />
         <Stat label={D.streak} value={<span className="inline-flex items-center gap-1.5">{streak}<Flame className={cn("size-5", streak ? "text-lime" : "text-subtle")} aria-hidden /></span>} sub={D.days} />
       </div>
@@ -97,7 +96,7 @@ export default async function DashboardPage() {
             <h2 className="text-sm font-medium text-muted">{D.usage}</h2>
             <Badge tone="lime">{D.plan}: {s.plan}</Badge>
           </div>
-          <p className="mt-4 text-3xl font-semibold tabular-nums">{Math.floor(Number(quota.data ?? 0))} <span className="text-base font-normal text-muted">{t.common.minutes}</span></p>
+          <p className="mt-4 text-3xl font-semibold tabular-nums">{Math.floor(Number(st.recording_left))} <span className="text-base font-normal text-muted">{t.common.minutes}</span></p>
           <p className="mt-1 text-xs text-subtle">{t.recorder.title}</p>
           <h2 className="mt-6 text-sm font-medium text-muted">{D.upcomingExams}</h2>
           {exams.data?.length ? (

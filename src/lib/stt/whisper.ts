@@ -1,4 +1,3 @@
-import "server-only";
 import OpenAI, { toFile } from "openai";
 import { ConfigError, env } from "@/lib/env";
 

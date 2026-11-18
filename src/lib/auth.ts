@@ -28,27 +28,29 @@ export type SessionContext = {
   plan: "free" | "plus" | "premium";
 };
 
-/** Verified server-side session (getUser re-validates the JWT with Supabase Auth). */
+/**
+ * Server-side session. getClaims() verifies the JWT signature (locally when the
+ * project uses asymmetric keys, otherwise via Supabase Auth); one RPC then loads
+ * profile, roles and plan in a single round trip.
+ */
 export const getSession = cache(async (): Promise<SessionContext | null> => {
   if (!integrationStatus().supabase) return null;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const [{ data: profile }, { data: roles }, { data: plan }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("user_roles").select("role").eq("user_id", user.id),
-    supabase.rpc("my_plan"),
-  ]);
-  if (!profile) return null;
-  const r = (roles ?? []).map((x) => x.role as Role);
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+  if (!claims?.sub) return null;
+  const { data } = await supabase.rpc("my_context");
+  const ctx = data as { profile: SessionContext["profile"] | null; roles: Role[]; plan: SessionContext["plan"] } | null;
+  if (!ctx?.profile) return null;
+  const r = ctx.roles ?? [];
   return {
-    userId: user.id,
-    email: user.email ?? profile.email,
-    profile,
+    userId: claims.sub,
+    email: (claims.email as string | undefined) ?? ctx.profile.email,
+    profile: ctx.profile,
     roles: r,
     isAdmin: r.includes("admin") || r.includes("super_admin"),
     isSuperAdmin: r.includes("super_admin"),
-    plan: (plan as SessionContext["plan"]) ?? "free",
+    plan: ctx.plan ?? "free",
   };
 });
 

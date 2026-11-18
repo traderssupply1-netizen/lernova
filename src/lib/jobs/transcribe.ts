@@ -1,5 +1,4 @@
-import "server-only";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { normaliseLanguage, transcribeSegment, type TranscriptSegment } from "@/lib/stt/whisper";
 import { enqueueJob, notify, type Job, type JobContext, type JobOutcome } from "./runner";
 
