@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpenCheck, Brain, FileText, Layers, Mic, Sparkles } from "lucide-react";
+import { BookOpenCheck, Brain, FileText, Layers, Mic, Plus, Sparkles } from "lucide-react";
 import { getDictionary } from "@/lib/i18n";
 import { Badge, buttonClass, Card, cn } from "@/components/ui";
 
@@ -21,11 +21,11 @@ export default async function LandingPage() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 -top-40 mx-auto h-[480px] max-w-3xl rounded-full bg-lime/10 blur-[120px]" aria-hidden />
-        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
+        <div className="pointer-events-none absolute inset-x-0 -top-40 mx-auto h-[480px] max-w-3xl rounded-full bg-lime/[0.06] blur-[120px]" aria-hidden />
+        <div className="reveal relative mx-auto max-w-6xl px-5 pb-16 pt-16 sm:px-6 sm:pt-24">
           <Badge tone="lime" className="mb-6"><Sparkles className="size-3" aria-hidden /> {L.badge}</Badge>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">{L.heroTitle}</h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">{L.heroSubtitle}</p>
+          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-6xl">{L.heroTitle}</h1>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-pretty text-muted sm:text-lg">{L.heroSubtitle}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/register" className={buttonClass("primary", "lg")}>{L.ctaPrimary}</Link>
             <a href="#features" className={buttonClass("secondary", "lg")}>{L.ctaSecondary}</a>
@@ -34,7 +34,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Product demonstration */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6" aria-labelledby="demo-title">
+      <section className="mx-auto max-w-6xl px-5 sm:px-6" aria-labelledby="demo-title">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
             <h2 id="demo-title" className="text-sm font-medium text-muted">{L.demoTitle}</h2>
@@ -69,14 +69,14 @@ export default async function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6" aria-labelledby="how-title">
+      <section className="mx-auto max-w-6xl px-5 py-24 sm:px-6 sm:py-32" aria-labelledby="how-title">
         <h2 id="how-title" className="text-2xl font-semibold tracking-tight sm:text-3xl">{L.howTitle}</h2>
         <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {L.howSteps.map((s, i) => (
             <li key={s.t}>
-              <Card className="h-full p-5">
+              <Card className="h-full p-6 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-ink-600">
                 <span className="font-mono text-xs text-lime">0{i + 1}</span>
-                <h3 className="mt-3 font-semibold">{s.t}</h3>
+                <h3 className="mt-4 font-semibold">{s.t}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{s.d}</p>
               </Card>
             </li>
@@ -85,11 +85,11 @@ export default async function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-20 sm:px-6" aria-labelledby="features-title">
+      <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-24 sm:px-6 sm:pb-32" aria-labelledby="features-title">
         <h2 id="features-title" className="sr-only">{t.nav.features}</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {features.map(({ key, icon: Icon }, i) => (
-            <Card key={key} className={cn("p-6", i === 0 && "lg:col-span-2")}>
+            <Card key={key} className={cn("p-6 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-ink-600", i === 0 && "lg:col-span-2")}>
               <div className="flex items-start justify-between">
                 <span className="grid size-10 place-items-center rounded-xl bg-ink-700 text-lime"><Icon className="size-5" aria-hidden /></span>
                 <Badge tone={LIVE[key] ? "ok" : "neutral"}>{LIVE[key] ? L.statusLive : L.statusSoon}</Badge>
@@ -102,27 +102,27 @@ export default async function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-4 pb-20 sm:px-6" aria-labelledby="faq-title">
+      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-5 pb-24 sm:px-6 sm:pb-32" aria-labelledby="faq-title">
         <h2 id="faq-title" className="text-2xl font-semibold tracking-tight sm:text-3xl">{L.faqTitle}</h2>
         <div className="mt-6 divide-y divide-ink-700 rounded-2xl border border-ink-700 bg-ink-900">
           {L.faqs.map((f) => (
-            <details key={f.q} className="group px-5 py-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
+            <details key={f.q} className="group px-5 py-2">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-lg py-2 font-medium transition-colors hover:text-lime [&::-webkit-details-marker]:hidden">
                 {f.q}
-                <span className="text-lime transition-transform group-open:rotate-45" aria-hidden>+</span>
+                <Plus className="size-4 shrink-0 text-lime transition-transform duration-200 ease-out group-open:rotate-45" aria-hidden />
               </summary>
-              <p className="mt-3 text-sm leading-relaxed text-muted">{f.a}</p>
+              <p className="mb-3 mt-1 max-w-[65ch] text-sm leading-relaxed text-muted">{f.a}</p>
             </details>
           ))}
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+      <section className="mx-auto max-w-6xl px-5 pb-24 sm:px-6 sm:pb-32">
         <Card className="relative overflow-hidden p-8 text-center sm:p-14">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(198_244_50/0.12),transparent_60%)]" aria-hidden />
           <h2 className="relative text-2xl font-semibold tracking-tight sm:text-4xl">{L.finalTitle}</h2>
-          <p className="relative mt-3 text-muted">{L.finalSubtitle}</p>
+          <p className="relative mx-auto mt-4 max-w-xl text-pretty text-muted">{L.finalSubtitle}</p>
           <Link href="/register" className={buttonClass("primary", "lg", "relative mt-8")}>{L.ctaPrimary}</Link>
         </Card>
       </section>

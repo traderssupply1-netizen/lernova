@@ -11,11 +11,11 @@ const variants: Record<Variant, string> = {
   ghost: "text-muted hover:text-fg hover:bg-ink-800",
   danger: "bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20",
 };
-const sizes = { sm: "h-9 px-3 text-sm rounded-lg", md: "h-11 px-4 text-sm rounded-xl", lg: "h-13 px-6 text-base rounded-2xl" };
+const sizes = { sm: "h-11 px-4 text-sm rounded-xl sm:h-9 sm:px-3 sm:rounded-lg", md: "h-11 px-4 text-sm rounded-xl", lg: "h-12 px-6 text-base rounded-xl" };
 
 export function buttonClass(variant: Variant = "primary", size: keyof typeof sizes = "md", extra?: string) {
   return cn(
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none select-none",
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none select-none",
     variants[variant],
     sizes[size],
     extra,

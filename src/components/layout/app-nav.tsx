@@ -23,7 +23,7 @@ export function AppNav({ items, variant }: { items: NavItem[]; variant: "side" |
               href={href}
               aria-current={active(href) ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150",
                 active(href) ? "bg-ink-800 text-fg" : "text-muted hover:bg-ink-850 hover:text-fg",
               )}
             >
@@ -50,7 +50,7 @@ export function AppNav({ items, variant }: { items: NavItem[]; variant: "side" |
             key={href}
             href={href}
             aria-current={active(href) ? "page" : undefined}
-            className={cn("flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-[11px]", active(href) ? "text-fg" : "text-subtle")}
+            className={cn("flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-xs transition-[color,transform] duration-150 ease-out active:scale-95", active(href) ? "text-fg" : "text-subtle hover:text-muted")}
           >
             <span className={cn("grid place-items-center rounded-full", isRecord ? "size-9 bg-lime text-lime-ink" : "size-6")}>
               <Icon className={cn(isRecord ? "size-4.5" : "size-5", !isRecord && active(href) && "text-lime")} aria-hidden />
